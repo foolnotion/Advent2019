@@ -1,6 +1,6 @@
 #include "../util.hpp"
 
-using point = std::tuple<int, int, int>;
+using point = std::array<int, 3>;
 
 int main(int argc, char** argv)
 {
@@ -49,22 +49,12 @@ int main(int argc, char** argv)
             default:
                 throw std::runtime_error("Unknown direction");
             }
-            //s--;
         }
         return points;
     };
 
     auto taxi_distance = [](point a, point b) {
-        auto [ax, ay, as] = a;
-        auto [bx, by, bs] = b;
-
-        return std::abs(ax - bx) + std::abs(ay - by);
-    };
-
-    auto comp = [](point a, point b) {
-        auto [ax, ay, as] = a;
-        auto [bx, by, bs] = b;
-        return std::make_pair(ax, ay) < std::make_pair(bx, by);
+        return std::abs(a[0] - b[0]) + std::abs(a[1] - b[1]);
     };
 
     // first wire
@@ -77,10 +67,14 @@ int main(int argc, char** argv)
     tokens = split(line, ',');
     auto pB = parse_points(tokens);
 
-    std::vector<point> intersection;
+    auto comp = [](point a, point b) {
+        return std::lexicographical_compare(a.begin(), a.begin()+2, b.begin(), b.begin()+2);
+    };
+
     std::sort(pA.begin(), pA.end(), comp);
     std::sort(pB.begin(), pB.end(), comp);
 
+    std::vector<point> intersection;
     std::set_intersection(pA.begin(), pA.end(), pB.begin(), pB.end(), std::back_inserter(intersection), comp);
 
     auto origin = point { 0, 0, 0 };
@@ -92,13 +86,12 @@ int main(int argc, char** argv)
             min_distance = d;
         }
     }
-
     fmt::print("{}\n", min_distance);
 
     // Part 2
     auto minSteps = std::numeric_limits<int>::max();
 
-    auto equals = [&](point a, point b) { return !(comp(a,b) || comp(b,a)); };
+    auto equals = [&](point a, point b) { return std::equal(a.begin(), a.begin()+2, b.begin()); };
 
     for (auto point : intersection) {
         auto a = std::find_if(pA.begin(), pA.end(), [&](const auto p) { return equals(p, point); });
@@ -107,7 +100,7 @@ int main(int argc, char** argv)
         assert(a != pA.end());
         assert(b != pB.end());
 
-        auto combinedSteps = std::get<2>(*a) + std::get<2>(*b);
+        auto combinedSteps = a->back() + b->back(); 
 
         if (minSteps > combinedSteps) {
             minSteps = combinedSteps;
