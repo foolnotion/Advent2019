@@ -3,6 +3,7 @@
 
 #include <fmt/format.h>
 
+#include <iostream>
 #include <algorithm>
 #include <charconv>
 #include <cmath>
@@ -13,6 +14,10 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <unordered_set>
+#include <unordered_map>
+
+#include <Eigen/Eigen>
 
 template <typename T>
 static std::optional<T> parse_number(const std::string& s)
