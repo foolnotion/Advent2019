@@ -4,7 +4,7 @@
 int main(int argc, char** argv)
 {
     // Part 1
-    std::ifstream infile("./day6_example2.txt");
+    std::ifstream infile("./day6_input.txt");
     std::string line;
  
     std::unordered_map<std::string, std::vector<std::string>> objects;
