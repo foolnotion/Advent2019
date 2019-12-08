@@ -78,7 +78,7 @@ int main(int argc, char** argv)
     };
     
     thrust = 0;
-    s = { 5 , 6, 7, 8, 9 };
+    s = { 5, 6, 7, 8, 9 };
     while(std::next_permutation(s.begin(), s.end())) {
         auto output = try_feedback(s);
         if (thrust < output) { 
