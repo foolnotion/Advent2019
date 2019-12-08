@@ -3,14 +3,6 @@
 constexpr int W = 25;
 constexpr int H = 6;
 
-template<typename T> struct Merge {
-  EIGEN_EMPTY_STRUCT_CTOR(Merge)
-  using result_type = T;
-  int operator()(const T& a, const T& b) const { 
-      return a == 2 ? b : a;
-  }
-};
-
 int main(int argc, char** argv)
 {
     // Part 1
@@ -43,11 +35,11 @@ int main(int argc, char** argv)
     // part 2
     auto img = layers.front();
     for (size_t i = 1; i < layers.size(); ++i) {
-        img = img.binaryExpr(layers[i], Merge<int>());
+        img = img.binaryExpr(layers[i], [](int a, int b) { return a == 2 ? b : a; });
     }
     for (int i = 0; i < H; ++i) {
         for (int j = 0; j < W; ++j) {
-            fmt::print("{} ", img(i, j));
+            fmt::print("{} ", img(i, j) == 0 ? ' ' : 'o');
         }
         fmt::print("\n");
     }
