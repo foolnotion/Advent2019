@@ -1,4 +1,4 @@
-#include "intcode.hpp"
+#include "../IntCode/intcode.hpp"
 
 int main(int argc, char** argv)
 {
@@ -8,22 +8,31 @@ int main(int argc, char** argv)
     std::string line;
     std::getline(infile, line);
     auto tokens = split(line, ',');
-    std::vector<int> numbers;
+    std::vector<int64_t> program;
 
     for (const auto& t : tokens) {
-        if (auto res = parse_number<int>(t); res.has_value()) {
-            numbers.push_back(res.value());
+        if (auto res = parse_number<int64_t>(t); res.has_value()) {
+            program.push_back(res.value());
         }
     }
 
+    fmt::print("program length: {}\n", program.size());
+    for(auto p : program) fmt::print("{}, ", p);
+    fmt::print("\n");
+
     // part 1
-    IntComputer comp(numbers);
+    IntComputer comp(program);
     comp.SetInput(1);
     comp.Run();
     fmt::print("{}\n", comp.GetOutput());
 
+    for(size_t i = 0; i < program.size(); ++i) {
+        fmt::print("{}, ", comp.GetMemory()[i]);
+    }
+    fmt::print("\n");
+
     // part 2
-    comp = IntComputer(numbers);
+    comp = IntComputer(program);
     comp.SetInput(5);
     comp.Run();
     fmt::print("{}\n", comp.GetOutput());

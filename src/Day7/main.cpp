@@ -1,17 +1,16 @@
-#include "intcode.hpp"
+#include "../util.hpp"
+#include "../IntCode/intcode.hpp"
 
 int main(int argc, char** argv)
 {
-    // Part 1
-    //std::ifstream infile("./example1.txt");
     std::ifstream infile("./input.txt");
     std::string line;
     std::getline(infile, line);
     auto tokens = split(line, ',');
-    std::vector<int> program;
+    std::vector<int64_t> program;
 
     for (const auto& t : tokens) {
-        if (auto res = parse_number<int>(t); res.has_value()) {
+        if (auto res = parse_number<int64_t>(t); res.has_value()) {
             program.push_back(res.value());
         }
     }
