@@ -39,15 +39,15 @@ public:
         auto pred = [&](const auto& c) { return c.Base + c.Size < addr; };
         auto p = std::partition_point(chunks.begin(), chunks.end(), pred);
 
-        if (p != chunks.end()) {
-            return p->Storage[addr - p->Base];
-        } else {
+        if (p == chunks.end() || addr < p->Base) {
             auto base = (addr / ChunkSize) * ChunkSize;
             assert(base % ChunkSize == 0);
             chunks.emplace_back(base, ChunkSize);
             auto& chunk = chunks.back();
             std::sort(chunks.begin(), chunks.end(), [](const auto& lhs, const auto& rhs) { return lhs.Base < rhs.Base; });
             return chunk[addr - chunk.Base];
+        } else {
+            return p->Storage[addr - p->Base];
         }
     }
 
