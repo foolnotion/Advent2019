@@ -34,47 +34,31 @@ int main(int argc, char** argv)
     m.conservativeResize(w, h);
 
     // part 1
-    auto slope = [](Point p1, Point p2) {
-        double dx = p1.first - p2.first;
-        double dy = p1.second - p2.second;
-
-        return std::atan2(dx, dy);
+    auto atan2 = [](Point p1, Point p2) {
+        return std::atan2(p1.first - p2.first, p1.second - p2.second);
     };
 
-    auto visible_quadrant = [&](Point p, Point lower, Point upper) {
+    auto visible = [&](int x, int y) -> int {
         std::vector<double> slopes;
-        auto [xmin, ymin] = lower;
-        auto [xmax, ymax] = upper;
 
-        Point q = lower;
-        for (int i = xmin; i < xmax; ++i) {
-            for (int j = ymin; j < ymax; ++j) {
-                auto q = std::make_pair(i, j);
-                if (p == q || m(i, j) == 0) {
+        for (int i = 0; i < m.rows(); ++i) {
+            for (int j = 0; j < m.cols(); ++j) {
+                if (m(i,j) == 0 || (i == x && j == y)) {
                     continue;
                 }
-                slopes.push_back(slope(p, q));
+                slopes.push_back(std::atan2(x-i, y-j));
             }
         }
         std::sort(slopes.begin(), slopes.end());
         auto it = std::unique(slopes.begin(), slopes.end());
-        return std::distance(slopes.begin(), it);
-    };
-
-    auto visible = [&](int x, int y) -> int {
-        auto vis = 0;
-        vis += visible_quadrant({ x, y }, { 0, 0 }, { x + 1, y + 1 });
-        vis += visible_quadrant({ x, y }, { x, y }, { m.rows(), m.cols() });
-        vis += visible_quadrant({ x, y }, { 0, y + 1 }, { x, m.cols() });
-        vis += visible_quadrant({ x, y }, { x + 1, 0 }, { m.rows(), y });
-
-        return vis;
+        return std::distance(slopes.begin(), it); 
     };
 
     for (Eigen::Index i = 0; i < m.rows(); ++i) {
         for (Eigen::Index j = 0; j < m.cols(); ++j) {
-            if (m(i, j) == 0)
+            if (m(i, j) == 0) {
                 continue;
+            }
             m(i, j) = visible(i, j);
         }
     }
@@ -101,7 +85,7 @@ int main(int argc, char** argv)
             if (p == ims) {
                 continue;
             }
-            auto s = slope(ims, p);
+            auto s = atan2(ims, p);
             auto d = dist(ims, p);
             params.push_back({s, d});
             points.push_back(p);
