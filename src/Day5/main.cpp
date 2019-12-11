@@ -23,13 +23,9 @@ int main(int argc, char** argv)
     // part 1
     IntComputer comp(program);
     comp.SetInput(1);
-    comp.Run();
+    while (!comp.Halted())
+        comp.Run();
     fmt::print("{}\n", comp.GetOutput());
-
-    for(size_t i = 0; i < program.size(); ++i) {
-        fmt::print("{}, ", comp.GetMemory()[i]);
-    }
-    fmt::print("\n");
 
     // part 2
     comp = IntComputer(program);

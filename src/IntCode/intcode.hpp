@@ -89,6 +89,8 @@ struct OpCode {
     constexpr static int Equals = 8;
     constexpr static int RelBase = 9;
     constexpr static int Halt = 99;
+
+    constexpr static int Lengths[] = { 4, 4, 2, 2, 3, 3, 4, 4, 2, 0 };
 };
 
 struct ParameterMode {
@@ -107,7 +109,8 @@ public:
     }
 
     IntComputer(std::vector<int64_t> program)
-        : reg(0)
+        : input(0)
+        , output(0)
         , ip(0)
         , base(0)
         , mem(program)
@@ -134,12 +137,12 @@ public:
             break;
         }
         case OpCode::In: {
-            Write(ip + 1, mode1, reg);
+            Write(ip + 1, mode1, input);
             ip += 2;
             break;
         }
         case OpCode::Out: {
-            reg = Read(ip + 1, mode1);
+            output = Read(ip + 1, mode1);
             ip += 2;
             break;
         }
@@ -175,25 +178,25 @@ public:
             ip += 2;
             break;
         }
-
         case OpCode::Halt: {
             return false;
         }
         default:
             throw std::runtime_error(fmt::format("Unknown opcode {} unpacked from instruction {} at ip = {}\n", opcode, mem[ip], ip));
         }
-        return ip < mem.Size();
+        return true;
     }
 
-    void Run()
-    {
-        while (Step()) {
-            // step until opcode 99 or end of program
+    void Run() {
+        while (!Halted() && CurrentOpcode() != OpCode::Out) {
+            Step();
         }
+        Step();
+        return;
     }
 
-    void SetInput(int64_t v) { reg = v; }
-    int64_t GetOutput() const { return reg; }
+    void SetInput(int64_t v) { input = v; }
+    int64_t GetOutput() const { return output; }
 
     int64_t operator[](int64_t addr) { return mem[addr]; }
 
@@ -203,10 +206,14 @@ public:
         return opcode;
     }
 
+    int64_t InstructionPointer() const { return ip; }
+
+    bool Halted() const { return CurrentOpcode() == OpCode::Halt; }
     const Tape& GetMemory() const { return mem; }
 
 private:
-    int64_t reg; // register to use as input
+    int64_t input;  // register to use as input
+    int64_t output; // register to use as output
     int64_t ip; // instruction pointer
     int64_t base; // relative base
 
