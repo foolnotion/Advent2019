@@ -31,7 +31,7 @@ static std::optional<T> parse_number(const std::string& s)
     return {};
 }
 
-std::vector<std::string> split(const std::string& s, char delimiter)
+static std::vector<std::string> split(const std::string& s, char delimiter)
 {
     std::vector<std::string> tokens;
     std::string token;
@@ -40,6 +40,20 @@ std::vector<std::string> split(const std::string& s, char delimiter)
         tokens.push_back(token);
     }
     return tokens;
+}
+
+template<typename T>
+static std::vector<T> to_vec(const std::string& s, char delimiter) {
+    auto tokens = split(s, delimiter);
+    std::vector<T> vec;
+    for(const auto& t : tokens) {
+        if (auto res = parse_number<T>(t); !res.has_value()) {
+            throw new std::runtime_error(fmt::format("Error: cannot parse '{}' as an {}\n", t, typeid(T).name()));
+        } else {
+            vec.push_back(res.value());
+        }
+    }
+    return vec;
 }
 
 #endif
