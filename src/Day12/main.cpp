@@ -37,9 +37,9 @@ int main(int argc, char** argv)
                 vel.row(i) += g;
                 vel.row(j) -= g;
             }
-            total  += pos.row(i).array().abs().sum() * vel.row(i).array().abs().sum();
+            pos.row(i) += vel.row(i);
+            total      += pos.row(i).array().abs().sum() * vel.row(i).array().abs().sum();
         }
-        pos += vel;
 
         for(int i = 0; i < 3; ++i) {
             if (cycles[i]   < 0 && pos.col(i) == p0.col(i)) { cycles[i]   = step+1; }
@@ -51,6 +51,7 @@ int main(int argc, char** argv)
         }
     }
     auto cycle = std::reduce(std::execution::seq, cycles.begin(), cycles.end(), 1l, [](auto a, auto b) { return std::lcm(a,b); });
+    fmt::print("{}\n", total);
     fmt::print("{}\n", cycle);
 
     return 0;
