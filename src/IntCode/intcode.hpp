@@ -28,6 +28,7 @@ public:
     Memory(std::vector<int64_t> data)
     {
         auto size = ChunkSize * (data.size() / ChunkSize + (data.size() % ChunkSize != 0));
+        Expects(size >= data.size());
         chunks.emplace_back(0, size);
         for (auto i = 0ul; i < data.size(); ++i) {
             chunks.back()[i] = data[i];
@@ -42,9 +43,9 @@ public:
         if (p == chunks.end() || addr < p->Base) {
             auto base = (addr / ChunkSize) * ChunkSize;
             assert(base % ChunkSize == 0);
-            chunks.emplace_back(base, ChunkSize);
             fmt::print("IntCode memory: creating new chunk C({},{}) for address {}\n", base, ChunkSize, addr);
-            auto& chunk = chunks.back();
+            Chunk chunk{base, ChunkSize};
+            chunks.push_back(chunk);
             std::sort(chunks.begin(), chunks.end(), [](const auto& lhs, const auto& rhs) { return lhs.Base < rhs.Base; });
             return chunk[addr - chunk.Base];
         } else {
@@ -57,11 +58,10 @@ public:
         auto pred = [&](const auto& c) { return c.Base + c.Size < addr; };
         auto p = std::partition_point(chunks.begin(), chunks.end(), pred);
 
-        if (p != chunks.end()) {
-            Expects(addr >= p->Base && p->Base + p->Size > addr);
-            return p->Storage[addr - p->Base];
-        } else {
+        if (p == chunks.end() || addr < p->Base) {
             throw std::runtime_error(fmt::format("Invalid access: {}\n", addr));
+        } else {
+            return p->Storage[addr - p->Base];
         }
     }
 
@@ -103,7 +103,7 @@ struct ParameterMode {
 
 class IntComputer {
 public:
-    using Tape = Memory<4096>;
+    using Tape = Memory<3000>;
 
     IntComputer() 
         : IntComputer(std::vector<int64_t>{})
