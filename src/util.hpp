@@ -2,6 +2,7 @@
 #define UTIL_HPP
 
 #include <fmt/format.h>
+#include <fmt/color.h>
 
 #include <iostream>
 #include <algorithm>
