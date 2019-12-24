@@ -44,7 +44,6 @@ struct MolekSyntez {
             throw new std::runtime_error(fmt::format("unexpected reactant {}\n", r.Id));
         }
         auto m = roundToBase(q, b);
-
         auto s = storage[r.Id];
 
         // update needed amount and quantity left in storage
