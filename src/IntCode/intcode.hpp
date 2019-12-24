@@ -44,13 +44,11 @@ public:
             auto base = (addr / ChunkSize) * ChunkSize;
             assert(base % ChunkSize == 0);
             fmt::print("IntCode memory: creating new chunk C({},{}) for address {}\n", base, ChunkSize, addr);
-            Chunk chunk{base, ChunkSize};
-            chunks.push_back(chunk);
-            std::sort(chunks.begin(), chunks.end(), [](const auto& lhs, const auto& rhs) { return lhs.Base < rhs.Base; });
-            return chunk[addr - chunk.Base];
-        } else {
-            return p->Storage[addr - p->Base];
-        }
+            chunks.emplace_back(base, ChunkSize);
+            std::sort(chunks.begin(), chunks.end(), [](auto const& lhs, auto const& rhs) { return lhs.Base < rhs.Base; });
+        } 
+        p = std::partition_point(chunks.begin(), chunks.end(), pred);
+        return p->Storage[addr - p->Base];
     }
 
     int64_t operator[](int64_t addr) const
@@ -103,7 +101,7 @@ struct ParameterMode {
 
 class IntComputer {
 public:
-    using Tape = Memory<3000>;
+    using Tape = Memory<1024>;
 
     IntComputer() 
         : IntComputer(std::vector<int64_t>{})
