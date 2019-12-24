@@ -185,40 +185,55 @@ int main(int argc, char** argv)
 
     // ok, now we have a path
     // L,12,R,4,R,4,L,6,L,12,R,4,R,4,R,12,L,12,R,4,R,4,L,6,L,10,L,6,R,4,L,12,R,4,R,4,L,6,L,12,R,4,R,4,R,12,L,10,L,6,R,4,L,12,R,4,R,4,R,12,L,10,L,6,R,4,L,12,R,4,R,4,L,6 
+    // in ascii code:
+    // 76,60,82,52,82,52,76,54,76,60,82,52,82,52,82,60,76,60,82,52,82,52,76,54,76,58,76,54,82,52,76,60,82,52,82,52,76,54,76,60,82,52,82,52,82,60,76,58,76,54,82,52,76,60,82,52,82,52,82,60,76,58,76,54,82,52,76,60,82,52,82,52,76,54
+    
+    // compressed:
+    // P = A,B,A,C,A,B,C,B,C,A
     // A = L,12,R,4,R,4,L,6
     // B = L,12,R,4,R,4,R,12
     // C = L,10,L,6,R,4
+    
     std::string mainR { "A,B,A,C,A,B,C,B,C,A\n" };
-    std::string subA  { "L,12,R,4,R,4,L,6\n"    };
-    std::string subB  { "L,12,R,4,R,4,R,12\n"   };
-    std::string subC  { "L,10,L,6,R,4\n"        };
+    std::string subA { "L,12,R,4,R,4,L,6\n" }; 
+    std::string subB { "L,12,R,4,R,4,R,12\n" }; 
+    std::string subC { "L,10,L,6,R,4\n" }; 
+    std::string feed { "n\n" };
 
-    std::string input = mainR + subA + subB + subC + "y\n";
+    std::string input = mainR + subA + subB + subC + feed;
 
-    fmt::print("input:\n{}", input);
     std::vector<int64_t> values;
     std::transform(input.begin(), input.end(), std::back_inserter(values), [](char ch) { return static_cast<int64_t>(ch); });
-    int idx = 0;
 
     fmt::print("ascii codes:\n");
     for (auto v : values ) {
         fmt::print("{}", v);
-        if (v == 10) { 
-            fmt::print("\n");
-        } else {
-            fmt::print(",");
-        }
+        fmt::print(v == 10 ? "\n" : ",");
     }
 
     computer = IntComputer(program);
     computer[0] = 2; // write 2 to memory at address 0
+    computer.Step();
+
+    int i = 0;
 
     while (!computer.Halted()) {
-        computer.SetInput(values[idx++]);
-        computer.Run();
-        auto out = computer.GetOutput();
-        fmt::print("{}", static_cast<char>(out));
+        if (computer.CurrentOpcode() == OpCode::In) {
+            computer.SetInput(values[i++]);
+            computer.Step();
+        } else {
+            while (computer.CurrentOpcode() != OpCode::In && !computer.Halted()) {
+                auto op = computer.CurrentOpcode();
+                computer.Step();
+                if (op == OpCode::Out) {
+                    fmt::print("{}", static_cast<char>(computer.GetOutput()));
+                }
+            }
+        }
     }
+    computer.Run();
+    fmt::print("\n{}\n", computer.GetOutput());
+
     return 0;
 }
 
