@@ -121,10 +121,10 @@ int main(int argc, char** argv)
         }
 
         if (isDoor(v) && u != std::tolower(v)) { encounteredDoors.push_back(std::tolower(v)); }
-        if (x > 0) { bfsKeyDistance(u, { x - 1, y }, d + 1); }
-        if (x < m.rows() - 1) { bfsKeyDistance(u, { x + 1, y }, d + 1); }
-        if (y > 0) { bfsKeyDistance(u, { x, y - 1 }, d + 1); }
-        if (y < m.cols() - 1) { bfsKeyDistance(u, { x, y + 1 }, d + 1); }
+        if (x > 0)                             { bfsKeyDistance(u, { x - 1, y }, d + 1); }
+        if (x < m.rows() - 1)                  { bfsKeyDistance(u, { x + 1, y }, d + 1); }
+        if (y > 0)                             { bfsKeyDistance(u, { x, y - 1 }, d + 1); }
+        if (y < m.cols() - 1)                  { bfsKeyDistance(u, { x, y + 1 }, d + 1); }
         if (isDoor(v) && u != std::tolower(v)) { encounteredDoors.pop_back(); }
     };
 
@@ -175,11 +175,6 @@ int main(int argc, char** argv)
         assert(!(f & key(a)));
         f |= key(a);
 
-        if (f == allFound) {
-            dmin = std::min(d, dmin);
-            return;
-        } 
-
         auto h = xxh::xxhash3<64>( { f, (uint32_t)a });
 
         if (cache.find(h) == cache.end()) {
@@ -191,6 +186,11 @@ int main(int argc, char** argv)
                 cache[h] = d;
             }
         }
+
+        if (f == allFound) {
+            dmin = std::min(d, dmin);
+            return;
+        } 
 
         // predicate to help sort keys/doors by reachability and proximity to the current point
         auto pred = [&](char c) {
@@ -209,13 +209,12 @@ int main(int argc, char** argv)
 
             if (it != doorsBetweenPaths.end()) {
                 std::vector<char> doors;
-                std::copy_if(it->second.begin(), it->second.end(), std::back_inserter(keys), pred);
+                std::copy_if(it->second.begin(), it->second.end(), std::back_inserter(doors), pred);
                 std::sort(doors.begin(), doors.end(), [&](auto lhs, auto rhs) { return dist(a, lhs) < dist(a, rhs); });
 
                 if (!doors.empty()) {
                     for (auto c : doors) {
                         findPath(c, f, d + dist(a, c));
-                        b = c;
                     }
                 }
             } 
@@ -226,10 +225,11 @@ int main(int argc, char** argv)
 
     for (auto k : keyNames)
     {
+        dmin = std::numeric_limits<int>::max();
         path.clear();
         findPath(k, 0, keyDistances(keyIndex(k)));
+        fmt::print("min distance {}-{}: {}\n", '@', k, dmin);
     }
-    fmt::print("min distance: {}\n", dmin);
 
     return 0;
 }
