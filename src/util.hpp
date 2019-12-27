@@ -1,23 +1,24 @@
 #ifndef UTIL_HPP
 #define UTIL_HPP
 
-#include <fmt/format.h>
 #include <fmt/color.h>
+#include <fmt/format.h>
 
-#include <iostream>
 #include <algorithm>
 #include <charconv>
 #include <cmath>
 #include <execution>
 #include <fstream>
+#include <iostream>
 #include <numeric>
 #include <optional>
+#include <ostream>
+#include <set>
 #include <sstream>
 #include <string>
-#include <vector>
-#include <unordered_set>
 #include <unordered_map>
-#include <set>
+#include <unordered_set>
+#include <vector>
 
 #include <Eigen/Eigen>
 
@@ -43,11 +44,12 @@ static std::vector<std::string> split(const std::string& s, char delimiter)
     return tokens;
 }
 
-template<typename T>
-static std::vector<T> to_vec(const std::string& s, char delimiter) {
+template <typename T>
+static std::vector<T> to_vec(const std::string& s, char delimiter)
+{
     auto tokens = split(s, delimiter);
     std::vector<T> vec;
-    for(const auto& t : tokens) {
+    for (const auto& t : tokens) {
         if (auto res = parse_number<T>(t); !res.has_value()) {
             throw new std::runtime_error(fmt::format("Error: cannot parse '{}' as an {}\n", t, typeid(T).name()));
         } else {

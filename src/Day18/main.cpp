@@ -6,25 +6,15 @@
 
 #include "xxh/xxhash.hpp"
 
-using Map = Eigen::Matrix<char, -1, -1>;
+using gsl::narrow;
 
 struct Point {
     int x;
     int y;
 
-    bool operator==(const Point rhs) const
-    {
-        return std::tie(x, y) == std::tie(rhs.x, rhs.y);
-    }
-    bool operator<(const Point rhs) const
-    {
-        return std::tie(x, y) < std::tie(rhs.x, rhs.y);
-    }
-    friend std::ostream& operator<<(std::ostream& os, Point& p)
-    {
-        os << "(" << p.x << "," << p.y << ")";
-        return os;
-    }
+    bool operator==(const Point rhs) const { return std::tie(x, y) == std::tie(rhs.x, rhs.y); }
+    bool operator<(const Point rhs) const { return std::tie(x, y) < std::tie(rhs.x, rhs.y); }
+    friend std::ostream& operator<<(std::ostream& os, Point& p) { os << "(" << p.x << "," << p.y << ")"; return os; }
 };
 
 int main(int argc, char** argv)
@@ -42,7 +32,7 @@ int main(int argc, char** argv)
         w = line.size();
         h = h + 1;
     }
-    Map m(w, h);
+    Eigen::Matrix<char, -1, -1> m(w, h);
 
     infile.clear();
     infile.seekg(0);
@@ -56,13 +46,8 @@ int main(int argc, char** argv)
         assert(isKey(c));
         return c - 97;
     };
-    auto doorIndex = [&](char c) {
-        assert(isDoor(c));
-        return c - 65;
-    };
 
-    std::vector<char> keyNames;
-    std::unordered_map<char, Point> doors;
+    std::vector<char> keys;
     std::unordered_map<char, Point> keyLocations;
 
     int j = 0;
@@ -72,38 +57,36 @@ int main(int argc, char** argv)
             m(i, j) = c;
 
             if (isKey(c)) {
-                keyNames.push_back(c);
+                keys.push_back(c);
                 keyLocations[c] = Point { i, j };
-            } else if (isDoor(c)) {
-                doors[std::tolower(c)] = Point { i, j };
-            } else if (c == '@') {
+            }  else if (c == '@') {
                 entrance = Point { i, j };
             }
         }
         ++j;
     }
 
-    std::sort(keyNames.begin(), keyNames.end(), [&](auto a, auto b) { return keyIndex(a) < keyIndex(b); });
+    std::sort(keys.begin(), keys.end(), [&](auto a, auto b) { return keyIndex(a) < keyIndex(b); });
 
     uint32_t allFound = (1 << keyLocations.size()) - 1;
     // part 1
     // we should cache the distances between the keyLocations,
     // as well as keep track of the doors blocking those paths
-    Eigen::Matrix<int, -1, 1> keyDistances(keyLocations.size());
+    Eigen::Matrix<int, -1, 1> keyDistances(keys.size());
     keyDistances.fill(0);
 
-    Eigen::Matrix<int, -1, -1> keyDistanceMatrix(keyLocations.size(), keyLocations.size());
+    Eigen::Matrix<int, -1, -1> keyDistanceMatrix(keys.size(), keys.size());
     keyDistanceMatrix.fill(0);
 
     Eigen::Matrix<bool, -1, -1> visited(m.rows(), m.cols());
     visited.fill(false);
 
-    std::map<std::pair<char, char>, std::vector<char>> doorsBetweenPaths;
+    std::map<std::pair<char, char>, std::vector<char>> doors;
     std::deque<char> encounteredDoors;
 
     // calculates distances from the entrance to any key, between all key pairs,
     // and maps the doors blocking the paths between keyLocations
-    std::function<void(char, Point, int)> bfsKeyDistance = [&](char u, Point p, int d) {
+    std::function<void(char, Point, int)> bfs = [&](char u, Point p, int d) {
         auto [x, y] = p;
         auto v = m(x, y);
         if (visited(x, y) or v == '#')
@@ -116,120 +99,133 @@ int main(int argc, char** argv)
             auto e = keyDistances(i);
             keyDistances(i) = e == 0 ? d : std::min(d, e);
             if (!encounteredDoors.empty()) {
-                doorsBetweenPaths[{ u, v }] = std::vector<char>(encounteredDoors.begin(), encounteredDoors.end());
+                doors[{ u, v }] = std::vector<char>(encounteredDoors.begin(), encounteredDoors.end());
             }
         }
 
         if (isDoor(v) && u != std::tolower(v)) { encounteredDoors.push_back(std::tolower(v)); }
-        if (x > 0)                             { bfsKeyDistance(u, { x - 1, y }, d + 1); }
-        if (x < m.rows() - 1)                  { bfsKeyDistance(u, { x + 1, y }, d + 1); }
-        if (y > 0)                             { bfsKeyDistance(u, { x, y - 1 }, d + 1); }
-        if (y < m.cols() - 1)                  { bfsKeyDistance(u, { x, y + 1 }, d + 1); }
+        if (x > 0)            { bfs(u, { x - 1, y }, d + 1); }
+        if (x < m.rows() - 1) { bfs(u, { x + 1, y }, d + 1); }
+        if (y > 0)            { bfs(u, { x, y - 1 }, d + 1); }
+        if (y < m.cols() - 1) { bfs(u, { x, y + 1 }, d + 1); }
         if (isDoor(v) && u != std::tolower(v)) { encounteredDoors.pop_back(); }
     };
 
-    for (auto k : keyNames) {
+    for (auto k : keys) {
         visited.fill(false);
         keyDistances.fill(0);
-        bfsKeyDistance(k, keyLocations[k], 0);
+        bfs(k, keyLocations[k], 0);
         auto i = keyIndex(k);
         keyDistanceMatrix.row(i) = keyDistances;
     }
 
     visited.fill(false);
     keyDistances.fill(0);
-    bfsKeyDistance('@', entrance, 0);
+    bfs('@', entrance, 0);
+
+    for (int j = 0; j < m.cols(); ++j) {
+        for (int i = 0; i < m.rows(); ++i) {
+            auto c = m(i, j);
+
+            if (c == '#') {
+                fmt::print(fmt::fg(fmt::color::gray), "\u2588\u2588");
+            } else if (isKey(c)) {
+                fmt::print(fmt::bg(fmt::color::green), "{} ", c);
+            } else if (isDoor(c)) {
+                fmt::print(fmt::bg(fmt::color::dark_red), "{} ", c);
+            } else if (c == '@') {
+                fmt::print("{} ", c);
+            } else {
+                fmt::print(fmt::fg(fmt::color::black), "\u2588\u2588");
+            } 
+        }
+        std::cout << "\n";
+    }   
+    //std::cout << m.transpose() << "\n"; 
+    //fmt::print("Entrance to keys:\n");
+    //std::cout << keyDistances << "\n";
+    //fmt::print("Key distance matrix:\n");
+    //std::cout << keyDistanceMatrix << "\n";
+    //fmt::print("Doors:\n");
+    //for (const auto& t : doors) {
+    //    fmt::print("{}-{}: ", t.first.first, t.first.second);
+    //    for (auto d : t.second) {
+    //        fmt::print("{} ", d);
+    //    }
+    //    fmt::print("\n");
+    //}
 
     // now we should have all the ingredients necessary to implement a solver
     // sketch of the algorithm:
     // - start from the entrance
-    // - iterate through keys
-    // - if a key is not reachable directly, iterate through the doors in beween locations
-    // - recurse and iterate through the respective keys
+    // - iterate through reachable keys and add up distances 
+
     // utils 
-    auto dist         = [&](char a, char b) { return keyDistanceMatrix(keyIndex(a), keyIndex(b)); };
-    auto key          = [&](char c) -> uint32_t { return 1u << keyIndex(c); };
+    auto dist = [&](char a, char b) { return keyDistanceMatrix(keyIndex(a), keyIndex(b)); };
+    auto key  = [&](char c) -> uint32_t { return 1u << keyIndex(c); };
 
-    std::deque<char> path;
-    auto pathLength = [&]() -> int {
-        auto len = keyDistances(keyIndex(path[0]));
-        for (size_t i = 0; i < path.size()-1; ++i) { len += dist(path[i], path[i+1]); }
-        return len;
-    };
-
-    uint32_t keys = 0;
     std::unordered_map<uint64_t, int> cache;
-    int dmin = std::numeric_limits<int>::max();
-
-    auto canReach = [&](char a, char b, uint32_t f) {
-        auto it = doorsBetweenPaths.find({a, b});
-        if (it == doorsBetweenPaths.end()) { 
+    
+    // check if key b can be reached from a 
+    // (returns false if key b was already collected)
+    auto reachable = [&](char a, char b, uint32_t f) {
+        if (a == b || f & key(b)) return false;
+        auto it = doors.find({a, b});
+        if (it == doors.end()) { 
             return true; 
         }
-        auto const& doors = it->second;
         // return true if I have the keys to all these doors
-        return std::all_of(doors.begin(), doors.end(), [&](char d) { return f & key(d); });
+        return std::all_of(it->second.begin(), it->second.end(), [&](char d) { return f & key(d); });
     };
 
-    std::function<void(char, uint32_t, int)> findPath = [&](char a, uint32_t f, int d) {
-        assert(!(f & key(a)));
-        f |= key(a);
-
-        auto h = xxh::xxhash3<64>( { f, (uint32_t)a });
-
-        if (cache.find(h) == cache.end()) {
-            cache[h] = d;
-        } else {
-            if (cache[h] < d) {
-                return;
+    std::function<int(char, uint32_t)> path = [&](char a, uint32_t f) {
+        auto h = xxh::xxhash3<64>( { key(a), f });
+        for (auto k : keys) {
+            if (f & key(k)) {
+                fmt::print(fmt::fg(fmt::color::green), "{} ", k);
+            } else if (a == k) {
+                fmt::print(fmt::fg(fmt::color::yellow), "{} ", k);
+            } else if (reachable(a, k, f)) {
+                fmt::print(fmt::fg(fmt::color::dark_gray), "{} ", k);
             } else {
-                cache[h] = d;
+                fmt::print(fmt::fg(fmt::color::dark_red), "{} ", k);
             }
         }
 
-        if (f == allFound) {
-            dmin = std::min(d, dmin);
-            return;
-        } 
-
-        // predicate to help sort keys/doors by reachability and proximity to the current point
-        auto pred = [&](char c) {
-            if (a == c) return false;
-            if (f & key(c)) return false;
-            if (!canReach(a, c, f)) return false;
-            return true;
-        };
-
-        std::vector<char> keys;
-        std::copy_if(keyNames.begin(), keyNames.end(), std::back_inserter(keys), pred);
-        std::sort(keys.begin(), keys.end(), [&](auto lhs, auto rhs) { return dist(a, lhs) < dist(a, rhs); });
-
-        for (auto b : keys) {
-            auto it = doorsBetweenPaths.find({a, b});
-
-            if (it != doorsBetweenPaths.end()) {
-                std::vector<char> doors;
-                std::copy_if(it->second.begin(), it->second.end(), std::back_inserter(doors), pred);
-                std::sort(doors.begin(), doors.end(), [&](auto lhs, auto rhs) { return dist(a, lhs) < dist(a, rhs); });
-
-                if (!doors.empty()) {
-                    for (auto c : doors) {
-                        findPath(c, f, d + dist(a, c));
-                    }
-                }
-            } 
-            // continue from the last point (could be a key that was needed to unlock a door)
-            findPath(b, f, d + dist(a, b));
+        if (cache.find(h) != cache.end()) {
+            fmt::print(fmt::fg(fmt::color::green), "cached result: {}\n", cache[h]);
+            return cache[h];
         }
+
+        fmt::print("\n");
+
+        assert(!(f & key(a)));
+        f |= key(a);
+
+        auto d = 0;
+        for (auto b : keys) {
+            if (!reachable(a, b, f)) { continue; }
+            auto e = dist(a, b) + path(b, f);
+            d = d == 0 ? e : std::min(e, d);
+        }
+        cache[h] = d;
+        return d;
     };
 
-    for (auto k : keyNames)
+    auto dmin = std::numeric_limits<int>::max();
+    for (auto k : keys)
     {
-        dmin = std::numeric_limits<int>::max();
-        path.clear();
-        findPath(k, 0, keyDistances(keyIndex(k)));
-        fmt::print("min distance {}-{}: {}\n", '@', k, dmin);
+        if (doors.find({'@', k}) != doors.end()) {
+            continue;
+        }
+        //cache.clear();
+        
+        auto d = path(k, 0);
+        auto e = keyDistances(keyIndex(k));
+        fmt::print("final path length: {}+{} = {}\n", d, e, d+e);
+        dmin = std::min(dmin, d + e); 
     }
+    fmt::print("min distance: {}\n", dmin);
 
     return 0;
 }
