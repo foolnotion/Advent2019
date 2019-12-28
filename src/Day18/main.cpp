@@ -78,8 +78,8 @@ int main(int argc, char** argv)
     Eigen::Matrix<int, -1, -1> keyDistanceMatrix(keys.size(), keys.size());
     keyDistanceMatrix.fill(0);
 
-    Eigen::Matrix<bool, -1, -1> visited(m.rows(), m.cols());
-    visited.fill(false);
+    Eigen::Matrix<int, -1, -1> visited(m.rows(), m.cols());
+    visited.fill(0);
 
     std::map<std::pair<char, char>, std::vector<char>> doors;
     std::deque<char> encounteredDoors;
@@ -89,10 +89,14 @@ int main(int argc, char** argv)
     std::function<void(char, Point, int)> bfs = [&](char u, Point p, int d) {
         auto [x, y] = p;
         auto v = m(x, y);
-        if (visited(x, y) or v == '#')
+        if (v == '#') {
+            return; 
+        }
+
+        if (visited(x, y) > 0 && visited(x, y) <= d)
             return;
 
-        visited(x, y) = true;
+        visited(x, y) = d;
 
         if (u != v && isKey(v)) {
             auto i = keyIndex(v);
@@ -119,42 +123,30 @@ int main(int argc, char** argv)
         keyDistanceMatrix.row(i) = keyDistances;
     }
 
-    visited.fill(false);
+    visited.fill(0);
     keyDistances.fill(0);
     bfs('@', entrance, 0);
 
-    for (int j = 0; j < m.cols(); ++j) {
-        for (int i = 0; i < m.rows(); ++i) {
-            auto c = m(i, j);
+    auto print = [&]() {
+        for (int j = 0; j < m.cols(); ++j) {
+            for (int i = 0; i < m.rows(); ++i) {
+                auto c = m(i, j);
 
-            if (c == '#') {
-                fmt::print(fmt::fg(fmt::color::gray), "\u2588\u2588");
-            } else if (isKey(c)) {
-                fmt::print(fmt::bg(fmt::color::green), "{} ", c);
-            } else if (isDoor(c)) {
-                fmt::print(fmt::bg(fmt::color::dark_red), "{} ", c);
-            } else if (c == '@') {
-                fmt::print("{} ", c);
-            } else {
-                fmt::print(fmt::fg(fmt::color::black), "\u2588\u2588");
-            } 
-        }
-        std::cout << "\n";
-    }   
-    //std::cout << m.transpose() << "\n"; 
-    //fmt::print("Entrance to keys:\n");
-    //std::cout << keyDistances << "\n";
-    //fmt::print("Key distance matrix:\n");
-    //std::cout << keyDistanceMatrix << "\n";
-    //fmt::print("Doors:\n");
-    //for (const auto& t : doors) {
-    //    fmt::print("{}-{}: ", t.first.first, t.first.second);
-    //    for (auto d : t.second) {
-    //        fmt::print("{} ", d);
-    //    }
-    //    fmt::print("\n");
-    //}
-
+                if (c == '#') {
+                    fmt::print(fmt::fg(fmt::color::gray), "\u2588\u2588");
+                } else if (isKey(c)) {
+                    fmt::print(fmt::bg(fmt::color::green), "{} ", c);
+                } else if (isDoor(c)) {
+                    fmt::print(fmt::bg(fmt::color::dark_red), "{} ", c);
+                } else if (c == '@') {
+                    fmt::print("{} ", c);
+                } else {
+                    fmt::print(fmt::fg(fmt::color::black), "\u2588\u2588");
+                } 
+            }
+            std::cout << "\n";
+        }  
+    };
     // now we should have all the ingredients necessary to implement a solver
     // sketch of the algorithm:
     // - start from the entrance
@@ -180,24 +172,9 @@ int main(int argc, char** argv)
 
     std::function<int(char, uint32_t)> path = [&](char a, uint32_t f) {
         auto h = xxh::xxhash3<64>( { key(a), f });
-        for (auto k : keys) {
-            if (f & key(k)) {
-                fmt::print(fmt::fg(fmt::color::green), "{} ", k);
-            } else if (a == k) {
-                fmt::print(fmt::fg(fmt::color::yellow), "{} ", k);
-            } else if (reachable(a, k, f)) {
-                fmt::print(fmt::fg(fmt::color::dark_gray), "{} ", k);
-            } else {
-                fmt::print(fmt::fg(fmt::color::dark_red), "{} ", k);
-            }
-        }
-
         if (cache.find(h) != cache.end()) {
-            fmt::print(fmt::fg(fmt::color::green), "cached result: {}\n", cache[h]);
             return cache[h];
         }
-
-        fmt::print("\n");
 
         assert(!(f & key(a)));
         f |= key(a);
@@ -208,6 +185,7 @@ int main(int argc, char** argv)
             auto e = dist(a, b) + path(b, f);
             d = d == 0 ? e : std::min(e, d);
         }
+        
         cache[h] = d;
         return d;
     };
@@ -218,11 +196,8 @@ int main(int argc, char** argv)
         if (doors.find({'@', k}) != doors.end()) {
             continue;
         }
-        //cache.clear();
-        
         auto d = path(k, 0);
         auto e = keyDistances(keyIndex(k));
-        fmt::print("final path length: {}+{} = {}\n", d, e, d+e);
         dmin = std::min(dmin, d + e); 
     }
     fmt::print("min distance: {}\n", dmin);
