@@ -43,7 +43,6 @@ public:
         if (p == chunks.end() || addr < p->Base) {
             auto base = (addr / ChunkSize) * ChunkSize;
             assert(base % ChunkSize == 0);
-            fmt::print("IntCode memory: creating new chunk C({},{}) for address {}\n", base, ChunkSize, addr);
             chunks.emplace_back(base, ChunkSize);
             std::sort(chunks.begin(), chunks.end(), [](auto const& lhs, auto const& rhs) { return lhs.Base < rhs.Base; });
         } 
